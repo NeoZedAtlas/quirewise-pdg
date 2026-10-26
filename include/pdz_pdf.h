@@ -6,7 +6,9 @@
  * classic-xref merger. No third-party dependency, consistent with the rest of
  * C_Performance.
  *
- * Two routes produce a book PDF, and they are not interchangeable:
+ * The standalone writer currently provides the image-page route. Native PDF
+ * member merging is exposed as a separate API and reports unsupported until a
+ * validated merger is available.
  *
  *   Route 1 ("native PDF members")
  *       Some containers store their pages as pdg_type 0x1A members whose payload
@@ -77,11 +79,12 @@ typedef struct PdzPdfReport {
 } PdzPdfReport;
 
 /*!
- * Convert a ``%pdgz`` container into a single book PDF.
+ * Convert an image-page ``%pdgz`` container into a single book PDF.
  *
- * Picks route 1 when the container has ``pdg_type 0x1A`` members, otherwise
- * route 2. `key_string` may be NULL: member keys are then resolved the same way
- * as pdz_member_payload() (bookkey -> fixed fallback -> stored as-is).
+ * Containers with native PDF members (``pdg_type 0x1A``) report
+ * PDG_ERR_UNSUPPORTED because native member merging is not silently treated as
+ * an image conversion. `key_string` may be NULL: member keys are then resolved
+ * the same way as pdz_member_payload() (bookkey -> fixed fallback -> stored as-is).
  *
  * The caller owns ``*out_pdf`` and releases it with free().
  */
@@ -95,12 +98,10 @@ PDG_API int pdz_pdf_from_pdz(const void *data,
                              PdzPdfReport *report);
 
 /*!
- * Merge already-decoded PDF blobs into one document.
+ * Merge already-decoded PDF blobs into one document. The current standalone
+ * package reports PDG_ERR_UNSUPPORTED until the native merger is validated.
  *
- * Only classic cross-reference-table PDFs with uncompressed objects are
- * accepted (that is what the PacketPdg producer emits); documents using
- * cross-reference streams or object streams are rejected with
- * PDG_ERR_UNSUPPORTED rather than merged incorrectly.
+ * The arguments are retained for ABI compatibility with existing callers.
  */
 PDG_API int pdz_pdf_merge(const uint8_t *const *pdfs,
                           const size_t *sizes,

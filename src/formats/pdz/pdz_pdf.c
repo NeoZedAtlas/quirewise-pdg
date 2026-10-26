@@ -647,6 +647,16 @@ PDG_API int pdz_pdf_from_pdz(const void *data, size_t size,
             if (report) ++report->skipped;
             continue;
         }
+        if (pdz_pdfpdg_is_member(payload.data, payload.size)) {
+            pdz_buffer_free(&payload);
+            rc = PDG_ERR_UNSUPPORTED;
+            if (report) {
+                report->route = PDZ_PDF_ROUTE_MEMBERS;
+                snprintf(report->note, sizeof(report->note),
+                         "native PDF member merging is not implemented");
+            }
+            goto cleanup;
+        }
         rc = pdg_render_memory(payload.data, payload.size, &rendered[image_count]);
         pdz_buffer_free(&payload);
         if (rc != PDG_OK) {
