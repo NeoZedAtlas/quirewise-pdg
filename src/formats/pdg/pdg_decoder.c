@@ -220,7 +220,7 @@ static int decode_decrypted_buffer(PdgContext *ctx, PdgBuffer *out)
 
     uint8_t *bmp = NULL;
     size_t bmp_size = 0;
-    int rc = pdg_decode_g4_to_bmp_ctx(ctx, out->data, out->size, out->header.width, out->header.height, &bmp, &bmp_size);
+    int rc = qw_pdg_decode_g4_to_bmp_ctx(ctx, out->data, out->size, out->header.width, out->header.height, &bmp, &bmp_size);
     if (rc != PDG_OK) {
         pdg_buffer_free(out);
         return rc;

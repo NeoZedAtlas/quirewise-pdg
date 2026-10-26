@@ -46,17 +46,17 @@ int pdg_apply_optional_layer(uint8_t *header, size_t header_size, uint8_t *paylo
 int pdg_apply_a_family_transform(uint8_t *header, size_t header_size, uint8_t *payload, size_t payload_size, uint8_t type);
 int pdg_apply_type28_transform(const uint8_t *header, size_t header_size, uint8_t *payload, size_t payload_size);
 
-int pdg_decode_g4(const uint8_t *data, size_t size, int width, int height, uint8_t **bits_out, size_t *bits_size_out);
+int qw_pdg_decode_g4(const uint8_t *data, size_t size, int width, int height, uint8_t **bits_out, size_t *bits_size_out);
 int pdg_bmp_from_1bpp(const uint8_t *bits, int width, int height, uint8_t **bmp_out, size_t *bmp_size_out);
-int pdg_decode_g4_to_bmp(const uint8_t *data, size_t size, int width, int height, uint8_t **bmp_out, size_t *bmp_size_out);
-int pdg_decode_g4_to_bmp_ctx(PdgContext *ctx,
+int qw_pdg_decode_g4_to_bmp(const uint8_t *data, size_t size, int width, int height, uint8_t **bmp_out, size_t *bmp_size_out);
+int qw_pdg_decode_g4_to_bmp_ctx(PdgContext *ctx,
                              const uint8_t *data,
                              size_t size,
                              int width,
                              int height,
                              uint8_t **bmp_out,
                              size_t *bmp_size_out);
-int pdg_decode_g4_to_gray8_ctx(PdgContext *ctx,
+int qw_pdg_decode_g4_to_gray8_ctx(PdgContext *ctx,
                                const uint8_t *data,
                                size_t size,
                                int width,

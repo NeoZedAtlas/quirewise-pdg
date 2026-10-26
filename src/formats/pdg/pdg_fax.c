@@ -447,7 +447,7 @@ static int decode_g4_rows(PdgContext *ctx,
     return PDG_OK;
 }
 
-int pdg_decode_g4(const uint8_t *data, size_t size, int width, int height, uint8_t **bits_out, size_t *bits_size_out)
+int qw_pdg_decode_g4(const uint8_t *data, size_t size, int width, int height, uint8_t **bits_out, size_t *bits_size_out)
 {
     if (!data || !bits_out || !bits_size_out || width <= 0 || height <= 0) {
         return PDG_ERR_INVALID_ARGUMENT;
@@ -533,12 +533,12 @@ int pdg_bmp_from_1bpp(const uint8_t *bits, int width, int height, uint8_t **bmp_
     return PDG_OK;
 }
 
-int pdg_decode_g4_to_bmp(const uint8_t *data, size_t size, int width, int height, uint8_t **bmp_out, size_t *bmp_size_out)
+int qw_pdg_decode_g4_to_bmp(const uint8_t *data, size_t size, int width, int height, uint8_t **bmp_out, size_t *bmp_size_out)
 {
-    return pdg_decode_g4_to_bmp_ctx(NULL, data, size, width, height, bmp_out, bmp_size_out);
+    return qw_pdg_decode_g4_to_bmp_ctx(NULL, data, size, width, height, bmp_out, bmp_size_out);
 }
 
-int pdg_decode_g4_to_bmp_ctx(PdgContext *ctx,
+int qw_pdg_decode_g4_to_bmp_ctx(PdgContext *ctx,
                              const uint8_t *data,
                              size_t size,
                              int width,
@@ -576,7 +576,7 @@ int pdg_decode_g4_to_bmp_ctx(PdgContext *ctx,
     return PDG_OK;
 }
 
-int pdg_decode_g4_to_gray8_ctx(PdgContext *ctx,
+int qw_pdg_decode_g4_to_gray8_ctx(PdgContext *ctx,
                                const uint8_t *data,
                                size_t size,
                                int width,

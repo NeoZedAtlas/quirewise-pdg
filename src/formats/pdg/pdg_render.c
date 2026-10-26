@@ -33,7 +33,7 @@ static bool is_group4_payload(const PdgBuffer *payload)
 
 static int render_group4_payload(PdgContext *ctx, const PdgBuffer *payload, PdgImage *out)
 {
-    int rc = pdg_decode_g4_to_gray8_ctx(ctx,
+    int rc = qw_pdg_decode_g4_to_gray8_ctx(ctx,
                                         payload->data,
                                         payload->size,
                                         payload->header.width,
