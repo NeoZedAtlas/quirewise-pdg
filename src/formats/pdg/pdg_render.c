@@ -1,6 +1,6 @@
 #include "pdg_internal.h"
 #include "../../core/byte_utils.h"
-#include "../image/image_internal.h"
+#include "../image/image_backend.h"
 
 #include "../../backends/mupdf_backend.h"
 
@@ -157,7 +157,7 @@ static int render_encoded_image_to_rgb24(const uint8_t *data, size_t size, const
     }
     rc = qw_jpeg_parse(data, size, &parsed_width, &parsed_height);
     if (rc != PDG_OK) return rc;
-    if (!qw_image_dimensions_within_limits(parsed_width, parsed_height)) {
+    if (!qw_pdg_image_dimensions_within_limits(parsed_width, parsed_height)) {
         return PDG_ERR_RESOURCE_LIMIT;
     }
 

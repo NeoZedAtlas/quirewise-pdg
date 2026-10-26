@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 project(QuirewisePDG VERSION 0.1.0 LANGUAGES C)
 
 include(GNUInstallDirs)
@@ -6,58 +6,58 @@ include(CMakePackageConfigHelpers)
 find_package(PkgConfig REQUIRED)
 find_package(QuirewiseImage CONFIG REQUIRED)
 
-pkg_check_modules(QW_DJVU REQUIRED IMPORTED_TARGET GLOBAL ddjvuapi)
+pkg_check_modules(QW_DJVU REQUIRED ddjvuapi)
 
 set(QW_PDG_INCLUDE_DIRS
-    "\${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/core"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdg"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdz"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/formats/image"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/formats/djvu"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/src/backends"
-    "\${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb")
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdz"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/image"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/djvu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/backends"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb")
 
 file(GLOB_RECURSE QW_PDG_SOURCES CONFIGURE_DEPENDS
     src/formats/pdg/*.c
     src/formats/pdz/*.c
     src/formats/djvu/djvu_parser.c)
 
-add_library(quirewise_pdg STATIC \${QW_PDG_SOURCES})
+add_library(quirewise_pdg STATIC ${QW_PDG_SOURCES})
 add_library(Quirewise::PDG ALIAS quirewise_pdg)
 set_target_properties(quirewise_pdg PROPERTIES
     EXPORT_NAME PDG
     POSITION_INDEPENDENT_CODE ON)
 target_compile_features(quirewise_pdg PUBLIC c_std_11)
 target_include_directories(quirewise_pdg PUBLIC
-    "\$<BUILD_INTERFACE:\${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "\$<INSTALL_INTERFACE:\${CMAKE_INSTALL_INCLUDEDIR}>"
-    PRIVATE \${QW_PDG_INCLUDE_DIRS})
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    PRIVATE ${QW_PDG_INCLUDE_DIRS})
 target_link_libraries(quirewise_pdg PRIVATE
     Quirewise::Image
-    PkgConfig::QW_DJVU
-    "\$<\$<NOT:\$<PLATFORM_ID:Windows>>:m>")
+    ${QW_DJVU_LIBRARIES}
+    "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
 
 install(TARGETS quirewise_pdg EXPORT QuirewisePDGTargets
-    ARCHIVE DESTINATION "\${CMAKE_INSTALL_LIBDIR}"
-    LIBRARY DESTINATION "\${CMAKE_INSTALL_LIBDIR}"
-    RUNTIME DESTINATION "\${CMAKE_INSTALL_BINDIR}")
-install(DIRECTORY include/ DESTINATION "\${CMAKE_INSTALL_INCLUDEDIR}")
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(FILES third_party/stb/stb_image.h
-    DESTINATION "\${CMAKE_INSTALL_INCLUDEDIR}")
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(EXPORT QuirewisePDGTargets
     FILE QuirewisePDGTargets.cmake
     NAMESPACE Quirewise::
-    DESTINATION "\${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
 configure_package_config_file(
     cmake/QuirewisePDGConfig.cmake.in
-    "\${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfig.cmake"
-    INSTALL_DESTINATION "\${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
+    "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
 write_basic_package_version_file(
-    "\${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfigVersion.cmake"
-    VERSION "\${PROJECT_VERSION}"
+    "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
     COMPATIBILITY SameMajorVersion)
 install(FILES
-    "\${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfig.cmake"
-    "\${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfigVersion.cmake"
-    DESTINATION "\${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
+    "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")

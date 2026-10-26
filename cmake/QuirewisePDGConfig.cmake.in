@@ -1,8 +1,8 @@
-﻿@PACKAGE_INIT@
+@PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
 find_dependency(PkgConfig)
 find_dependency(QuirewiseImage CONFIG)
-pkg_check_modules(QW_DJVU REQUIRED IMPORTED_TARGET GLOBAL ddjvuapi)
-include("\${CMAKE_CURRENT_LIST_DIR}/QuirewisePDGTargets.cmake")
+pkg_check_modules(QW_DJVU REQUIRED ddjvuapi)
+include("${CMAKE_CURRENT_LIST_DIR}/QuirewisePDGTargets.cmake")
 check_required_components(QuirewisePDG)

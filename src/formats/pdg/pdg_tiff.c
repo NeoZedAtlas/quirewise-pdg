@@ -1,6 +1,6 @@
 #include "pdg_internal.h"
 
-#include "../image/tiff_decode.h"
+#include "../image/image_backend.h"
 
 #include <string.h>
 
