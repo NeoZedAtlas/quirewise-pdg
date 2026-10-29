@@ -3,6 +3,7 @@
 include(CMakeFindDependencyMacro)
 find_dependency(PkgConfig)
 find_dependency(QuirewiseImage CONFIG)
+find_dependency(QuirewiseCrypto CONFIG)
 pkg_check_modules(QW_DJVU REQUIRED ddjvuapi)
 include("${CMAKE_CURRENT_LIST_DIR}/QuirewisePDGTargets.cmake")
 check_required_components(QuirewisePDG)

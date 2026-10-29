@@ -21,6 +21,8 @@
 
 #include "pdz_internal.h"
 
+#include <quirewise/crypto.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -220,13 +222,15 @@ int pdz_ssct_decode_key64(const void *blob, size_t size, const char *key64,
             lo = hexval(text[n - 0x21]);
         }
         if (hi < 0 || lo < 0) {
-            return PDG_ERR_FORMAT;
+            rc = PDG_ERR_FORMAT;
+            goto done;
         }
         iv[i] = (uint8_t)((hi << 4) | lo);
     }
     ct_len = (n - 0x44) / 2;
     if ((n - 0x44) % 2 || ct_len == 0 || ct_len % 16) {
-        return PDG_ERR_FORMAT;
+        rc = PDG_ERR_FORMAT;
+        goto done;
     }
     cipher = (uint8_t *)malloc(ct_len);
     plain = (uint8_t *)malloc(ct_len + 1);
@@ -249,12 +253,21 @@ int pdz_ssct_decode_key64(const void *blob, size_t size, const char *key64,
         for (i = 0; i < ct_len; i += 16) {
             uint8_t dec[16];
             size_t k;
-            pdz_aes256_decrypt_block(cipher + i, aes_key, dec);
+            memcpy(dec, cipher + i, sizeof(dec));
+            if (qw_crypto_aes256_ecb_decrypt(aes_key, dec, sizeof(dec)) !=
+                QW_CRYPTO_OK) {
+                qw_crypto_secure_zero(dec, sizeof(dec));
+                qw_crypto_secure_zero(prev, sizeof(prev));
+                rc = PDG_ERR_FORMAT;
+                goto done;
+            }
             for (k = 0; k < 16; k++) {
                 plain[i + k] = (uint8_t)(dec[k] ^ prev[k]);
                 prev[k] = cipher[i + k];
             }
+            qw_crypto_secure_zero(dec, sizeof(dec));
         }
+        qw_crypto_secure_zero(prev, sizeof(prev));
     }
     plain[ct_len] = 0;
     *out_xml = plain;
@@ -263,6 +276,10 @@ int pdz_ssct_decode_key64(const void *blob, size_t size, const char *key64,
     rc = PDG_OK;
 
 done:
+    qw_crypto_secure_zero(aes_key, sizeof(aes_key));
+    qw_crypto_secure_zero(iv, sizeof(iv));
+    qw_crypto_secure_zero(acc, sizeof(acc));
+    qw_crypto_secure_zero(salt, sizeof(salt));
     free(cipher);
     free(plain);
     return rc;
@@ -483,11 +500,18 @@ int pdz_ssct_decode(const void *blob, size_t size, uint8_t **out_xml, size_t *ou
     for (i = 0; i < ct_len; i += 16) {
         uint8_t dec[16];
         size_t k;
-        pdz_aes256_decrypt_block(cipher + i, key, dec);
+        memcpy(dec, cipher + i, sizeof(dec));
+        if (qw_crypto_aes256_ecb_decrypt(key, dec, sizeof(dec)) !=
+            QW_CRYPTO_OK) {
+            qw_crypto_secure_zero(dec, sizeof(dec));
+            rc = PDG_ERR_FORMAT;
+            goto done;
+        }
         for (k = 0; k < 16; k++) {
             plain[i + k] = (uint8_t)(dec[k] ^ iv[k]);
             iv[k] = cipher[i + k];
         }
+        qw_crypto_secure_zero(dec, sizeof(dec));
     }
     plain[ct_len] = 0;
     *out_xml = plain;
@@ -495,6 +519,9 @@ int pdz_ssct_decode(const void *blob, size_t size, uint8_t **out_xml, size_t *ou
     plain = NULL;
 
 done:
+    qw_crypto_secure_zero(key, sizeof(key));
+    qw_crypto_secure_zero(iv, sizeof(iv));
+    qw_crypto_secure_zero(want, sizeof(want));
     free(effective);
     free(cipher);
     free(plain);

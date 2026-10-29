@@ -34,7 +34,6 @@ int pdg_parse_header(const uint8_t *file_data, size_t file_size, PdgHeader *head
 PdgOutputKind pdg_detect_payload_kind(const uint8_t *data, size_t size);
 void pdg_decode_dimensions(PdgHeader *header);
 
-void pdg_md5(const uint8_t *data, size_t size, uint8_t digest[16]);
 void pdg_repeating_xor(uint8_t *data, size_t size, const uint8_t *key, size_t key_size);
 void pdg_pdg_block_decrypt(uint8_t block[16], const uint8_t key[16]);
 void pdg_pdg_block_decrypt_buffer(uint8_t *data, size_t size, const uint8_t key[16]);
@@ -102,12 +101,5 @@ int pdg_djvu_reader_render_page(PdgDjvuReader *reader,
                                 const PdgHeader *header,
                                 PdgImage *out);
 void pdg_djvu_reader_close(PdgDjvuReader *reader);
-
-void pdg_deslike_derive_schedules(const uint8_t key16[16], uint32_t schedules[6][32]);
-void pdg_deslike_transform16(uint8_t block[16], const uint32_t schedules[6][32]);
-
-extern const uint32_t pdg_des_round_sp[512];
-extern const uint8_t pdg_des_key_rot[16];
-extern const uint32_t pdg_des_key_pc[512];
 
 #endif

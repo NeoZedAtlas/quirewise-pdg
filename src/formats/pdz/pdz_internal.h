@@ -9,11 +9,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Blowfish initial state, generated from the hexadecimal expansion of pi by
- * tools/gen_blowfish_tables.py. */
-extern const uint32_t pdz_blowfish_p_init[18];
-extern const uint32_t pdz_blowfish_s_init[4][256];
-
 /* Hardcoded catalog key string. Identical on all five reference samples,
  * registered or not, and confirmed byte-for-byte inside the official reader. */
 #define PDZ_CATALOG_KEY_STRING \
@@ -25,15 +20,10 @@ extern const uint32_t pdz_blowfish_s_init[4][256];
 #define PDZ_KEY_CONST_2 0x00805038u
 #define PDZ_KEY_CONST_3 0x00920208u
 
-#define PDZ_TEA_BLOCK_SIZE 16
-#define PDZ_TEA_ROUNDS 16
-#define PDZ_TEA_SUM_INIT 0xE3779B90u
-#define PDZ_TEA_SUM_DELTA 0x9E3779B9u
-
-/* pdgDll 0x1000ba40. Decrypts whole 16-byte blocks; a trailing partial block is
- * left untouched, matching the engine. */
+/* Format-specific MD5 text conversion and word swap wrappers. */
 void pdz_tea128_decrypt(uint8_t *data, size_t size, const uint8_t key[16]);
 void pdz_md5_digest(const void *data, size_t size, uint8_t out[16]);
+void pdz_md5_hex_upper(const void *data, size_t size, char out[33]);
 
 /* Reverse the bytes of each 32-bit word in place. */
 void pdz_word_swap32(uint8_t *data, size_t size);

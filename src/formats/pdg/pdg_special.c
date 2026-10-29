@@ -1,5 +1,7 @@
 #include "pdg_internal.h"
 
+#include <quirewise/crypto.h>
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -208,11 +210,19 @@ static int transform_first_17_chunks(uint8_t *payload, size_t payload_size, cons
     if (payload_size < 16 + 16 * 0x20) {
         return PDG_ERR_FORMAT;
     }
-    uint32_t schedules[6][32];
-    pdg_deslike_derive_schedules(key16, schedules);
-    for (int i = 0; i < 17; ++i) {
-        pdg_deslike_transform16(payload + i * 0x20, schedules);
+    QwCryptoPdgDeslikeSchedule schedule = {{{0}}};
+    if (qw_crypto_pdg_deslike_schedule_init(key16, &schedule) != QW_CRYPTO_OK) {
+        qw_crypto_pdg_deslike_schedule_clear(&schedule);
+        return PDG_ERR_INVALID_ARGUMENT;
     }
+    for (int i = 0; i < 17; ++i) {
+        if (qw_crypto_pdg_deslike_transform16(payload + i * 0x20, &schedule) !=
+            QW_CRYPTO_OK) {
+            qw_crypto_pdg_deslike_schedule_clear(&schedule);
+            return PDG_ERR_INVALID_ARGUMENT;
+        }
+    }
+    qw_crypto_pdg_deslike_schedule_clear(&schedule);
     return PDG_OK;
 }
 
@@ -234,6 +244,7 @@ int pdg_apply_optional_layer(uint8_t *header, size_t header_size, uint8_t *paylo
     qw_write_u32_le(key + 12, 0x00920204u);
 
     int rc = transform_first_17_chunks(payload, payload_size, key);
+    qw_crypto_secure_zero(key, sizeof(key));
     if (rc != PDG_OK) {
         return rc;
     }
@@ -274,7 +285,9 @@ int pdg_apply_a_family_transform(uint8_t *header, size_t header_size, uint8_t *p
         qw_write_u32_le(key + 8, qw_read_u32_le(header + 0x28) ^ 0x00805038u);
         qw_write_u32_le(key + 12, qw_read_u32_le(header + 0x2c) ^ 0x00920208u);
     }
-    return transform_first_17_chunks(payload, payload_size, key);
+    int rc = transform_first_17_chunks(payload, payload_size, key);
+    qw_crypto_secure_zero(key, sizeof(key));
+    return rc;
 }
 
 int pdg_apply_type28_transform(const uint8_t *header, size_t header_size, uint8_t *payload, size_t payload_size)
@@ -312,11 +325,39 @@ int pdg_apply_type28_transform(const uint8_t *header, size_t header_size, uint8_
     qw_write_u32_le(key + 8, v6);
     qw_write_u32_le(key + 12, v7);
 
-    uint32_t schedules[6][32];
-    pdg_deslike_derive_schedules(key, schedules);
-    size_t chunk_count = payload_size / 0x20u;
-    for (size_t i = 0; i < chunk_count; ++i) {
-        pdg_deslike_transform16(payload + i * 0x20u, schedules);
+    QwCryptoPdgDeslikeSchedule schedule = {{{0}}};
+    if (qw_crypto_pdg_deslike_schedule_init(key, &schedule) != QW_CRYPTO_OK) {
+        qw_crypto_pdg_deslike_schedule_clear(&schedule);
+        qw_crypto_secure_zero(key, sizeof(key));
+        return PDG_ERR_INVALID_ARGUMENT;
     }
-    return PDG_OK;
+    size_t chunk_count = payload_size / 0x20u;
+    int rc = PDG_OK;
+    for (size_t i = 0; i < chunk_count; ++i) {
+        if (qw_crypto_pdg_deslike_transform16(payload + i * 0x20u, &schedule) !=
+            QW_CRYPTO_OK) {
+            rc = PDG_ERR_INVALID_ARGUMENT;
+            break;
+        }
+    }
+    qw_crypto_pdg_deslike_schedule_clear(&schedule);
+    qw_crypto_secure_zero(key, sizeof(key));
+    qw_crypto_secure_zero(&d0, sizeof(d0));
+    qw_crypto_secure_zero(&d1, sizeof(d1));
+    qw_crypto_secure_zero(&d2, sizeof(d2));
+    qw_crypto_secure_zero(&d3, sizeof(d3));
+    qw_crypto_secure_zero(&d4, sizeof(d4));
+    qw_crypto_secure_zero(&d5, sizeof(d5));
+    qw_crypto_secure_zero(&d6, sizeof(d6));
+    qw_crypto_secure_zero(&d7, sizeof(d7));
+    qw_crypto_secure_zero(&v0, sizeof(v0));
+    qw_crypto_secure_zero(&v1, sizeof(v1));
+    qw_crypto_secure_zero(&v2, sizeof(v2));
+    qw_crypto_secure_zero(&v3, sizeof(v3));
+    qw_crypto_secure_zero(&v4, sizeof(v4));
+    qw_crypto_secure_zero(&v5, sizeof(v5));
+    qw_crypto_secure_zero(&v6, sizeof(v6));
+    qw_crypto_secure_zero(&v7, sizeof(v7));
+    qw_crypto_secure_zero(&sum, sizeof(sum));
+    return rc;
 }

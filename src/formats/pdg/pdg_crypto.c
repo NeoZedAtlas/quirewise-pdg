@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <quirewise/crypto.h>
+
 static const uint8_t KEY_SUPERSTAR[16] = {
     'S', 'U', 'P', 'E', 'R', 'S', 'T', 'A', 'R', '4', 'P', 'D', 'G', '2', '.', '0'
 };
@@ -34,28 +36,8 @@ void pdg_xor_pi(uint8_t *data, size_t size)
 
 void pdg_pdg_block_decrypt(uint8_t block[16], const uint8_t key[16])
 {
-    uint32_t v0 = qw_read_u32_le(block + 0);
-    uint32_t v1 = qw_read_u32_le(block + 4);
-    uint32_t v2 = qw_read_u32_le(block + 8);
-    uint32_t v3 = qw_read_u32_le(block + 12);
-    uint32_t k0 = qw_read_u32_le(key + 0);
-    uint32_t k1 = qw_read_u32_le(key + 4);
-    uint32_t k2 = qw_read_u32_le(key + 8);
-    uint32_t k3 = qw_read_u32_le(key + 12);
-    uint32_t sum = 0xe3779b90u;
-
-    for (int i = 0; i < 16; ++i) {
-        v3 -= (((v0 >> 5) + k1) ^ ((v0 << 4) + k2) ^ (v0 + sum));
-        v2 -= (((v3 << 4) + k0) ^ ((v3 >> 5) + k3) ^ (v3 + sum));
-        v1 -= (((v2 >> 5) + k3) ^ ((v2 << 4) + k2) ^ (v2 + sum));
-        v0 -= (((v1 << 4) + k0) ^ ((v1 >> 5) + k1) ^ (v1 + sum));
-        sum += 0x61c88647u;
-    }
-
-    qw_write_u32_le(block + 0, v0);
-    qw_write_u32_le(block + 4, v1);
-    qw_write_u32_le(block + 8, v2);
-    qw_write_u32_le(block + 12, v3);
+    if (block && key)
+        (void)qw_crypto_pdg_tea128_ecb_decrypt(key, block, 16u);
 }
 
 void pdg_pdg_block_decrypt_buffer(uint8_t *data, size_t size, const uint8_t key[16])
@@ -63,10 +45,7 @@ void pdg_pdg_block_decrypt_buffer(uint8_t *data, size_t size, const uint8_t key[
     if (!data || !key) {
         return;
     }
-    size_t block_count = size / 16;
-    for (size_t i = 0; i < block_count; ++i) {
-        pdg_pdg_block_decrypt(data + i * 16, key);
-    }
+    (void)qw_crypto_pdg_tea128_ecb_decrypt(key, data, size);
 }
 
 static void derive_md5_key(const PdgHeader *header, bool mode4_hjop, uint8_t key[16])
@@ -78,7 +57,9 @@ static void derive_md5_key(const PdgHeader *header, bool mode4_hjop, uint8_t key
             material[0x24 + i] ^= KEY_HJOP[i];
         }
     }
-    pdg_md5(material, sizeof(material), key);
+    if (qw_crypto_md5_digest(material, sizeof(material), key) != QW_CRYPTO_OK)
+        memset(key, 0, 16u);
+    qw_crypto_secure_zero(material, sizeof(material));
 }
 
 static void decrypt_with_primary_dispatch(uint8_t *payload, size_t payload_size, const PdgHeader *header)
@@ -88,6 +69,7 @@ static void decrypt_with_primary_dispatch(uint8_t *payload, size_t payload_size,
 
     if (header->type == 1) {
         pdg_xor_pi(payload, payload_size);
+        qw_crypto_secure_zero(key, sizeof(key));
         return;
     }
     if (header->type == 5) {
@@ -96,6 +78,7 @@ static void decrypt_with_primary_dispatch(uint8_t *payload, size_t payload_size,
         pdg_repeating_xor(key, 8, KEY_SUPERSTAR, 8);
     }
     pdg_pdg_block_decrypt_buffer(payload, payload_size, key);
+    qw_crypto_secure_zero(key, sizeof(key));
 }
 
 static void decrypt_with_ssreader_variant(uint8_t *payload, size_t payload_size, const PdgHeader *header)
@@ -106,6 +89,7 @@ static void decrypt_with_ssreader_variant(uint8_t *payload, size_t payload_size,
         pdg_repeating_xor(key, 8, KEY_SSREADER, sizeof(KEY_SSREADER));
     }
     pdg_pdg_block_decrypt_buffer(payload, payload_size, key);
+    qw_crypto_secure_zero(key, sizeof(key));
 }
 
 int pdg_decrypt_payload_in_place(uint8_t *payload, size_t payload_size, const PdgHeader *header)

@@ -5,6 +5,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 find_package(PkgConfig REQUIRED)
 find_package(QuirewiseImage CONFIG REQUIRED)
+find_package(QuirewiseCrypto CONFIG REQUIRED)
 
 pkg_check_modules(QW_DJVU REQUIRED ddjvuapi)
 
@@ -35,6 +36,7 @@ target_include_directories(quirewise_pdg PUBLIC
     PRIVATE ${QW_PDG_INCLUDE_DIRS})
 target_link_libraries(quirewise_pdg PRIVATE
     Quirewise::Image
+    Quirewise::Crypto
     ${QW_DJVU_LIBRARIES}
     "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
 
