@@ -354,13 +354,14 @@ PDG_API int pdg_output_requires_external_decoder(PdgOutputKind kind)
 #else
         return 1;
 #endif
+    case PDG_OUTPUT_JP2:
+        return 1;
     case PDG_OUTPUT_RAW:
     case PDG_OUTPUT_BMP:
     case PDG_OUTPUT_JPEG:
     case PDG_OUTPUT_PNG:
     case PDG_OUTPUT_DJVU:
     case PDG_OUTPUT_TIFF:
-    case PDG_OUTPUT_JP2:
     default:
         return 0;
     }

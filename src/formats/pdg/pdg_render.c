@@ -207,6 +207,18 @@ static int render_encoded_image_to_rgb24(const uint8_t *data, size_t size, const
     return PDG_OK;
 }
 
+int pdg_render_jp2_payload(const uint8_t *data,
+                           size_t size,
+                           const PdgHeader *header,
+                           PdgImage *out)
+{
+    (void)header;
+    if (!data || !out) return PDG_ERR_INVALID_ARGUMENT;
+    (void)size;
+    memset(out, 0, sizeof(*out));
+    return PDG_ERR_EXTERNAL_DECODER_REQUIRED;
+}
+
 int pdg_render_decoded_payload_ctx(PdgContext *ctx,
                                    const PdgBuffer *payload,
                                    PdgImage *out)

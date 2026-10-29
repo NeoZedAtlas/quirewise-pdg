@@ -1,5 +1,6 @@
 #include "pdz_pdf.h"
 #include "pdg.h"
+#include "pdg_internal.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -413,6 +414,17 @@ static int member_is_body(const PdzMember *member)
     }
     length = strnlen(member->name, PDZ_NAME_SIZE);
     return length == 6u && name_is_digits(member->name, length);
+}
+
+PDG_API int pdz_pdfpdg_is_member(const void *member, size_t size)
+{
+    PdgHeader header;
+    int rc;
+
+    if (!member) return 0;
+    rc = pdg_parse_header((const uint8_t *)member, size, &header);
+    return rc == PDG_OK && header.type == 0x1au &&
+           header.data_offset == PDG_HEADER_SIZE && header.data_size != 0u;
 }
 
 static int member_is_attachment(const PdzMember *member)
