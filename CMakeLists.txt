@@ -45,8 +45,6 @@ install(TARGETS quirewise_pdg EXPORT QuirewisePDGTargets
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-install(FILES third_party/stb/stb_image.h
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(EXPORT QuirewisePDGTargets
     FILE QuirewisePDGTargets.cmake
     NAMESPACE Quirewise::
