@@ -95,4 +95,12 @@ if(BUILD_TESTING)
     target_link_libraries(quirewise_pdg_fuzz_smoke PRIVATE Quirewise::PDG)
     add_test(NAME quirewise_pdg_fuzz_smoke
         COMMAND quirewise_pdg_fuzz_smoke)
+
+    add_executable(quirewise_pdg_parallel_test tests/pdg_parallel_test.c)
+    target_compile_features(quirewise_pdg_parallel_test PRIVATE c_std_11)
+    target_link_libraries(quirewise_pdg_parallel_test PRIVATE
+        Quirewise::PDG
+        $<$<NOT:$<PLATFORM_ID:Windows>>:pthread>)
+    add_test(NAME quirewise_pdg_parallel
+        COMMAND quirewise_pdg_parallel_test)
 endif()
