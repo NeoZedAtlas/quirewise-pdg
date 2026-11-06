@@ -1,4 +1,4 @@
-#include "pdg_internal.h"
+﻿#include "pdg_internal.h"
 #include "djvu_parser.h"
 
 #include <stdint.h>
@@ -80,8 +80,8 @@ int main(void)
 
     document_size = build_single_page_djvu(document, sizeof(document));
     CHECK(document_size > 0u);
-    CHECK(qw_djvu_probe(document, document_size) == 1);
-    CHECK(qw_djvu_parse_page_count(document, document_size, &page_count) == PDG_OK);
+    CHECK(qw_pdg_djvu_probe(document, document_size) == 1);
+    CHECK(qw_pdg_djvu_parse_page_count(document, document_size, &page_count) == PDG_OK);
     CHECK(page_count == 1u);
 
     rc = pdg_djvu_reader_open(document, document_size, &reader, &page_count);
@@ -106,7 +106,7 @@ int main(void)
      * pixel decoder. */
     memcpy(document + document_size - 1u, "\xff", 1u);
     write_be32(document + 8u, 0x7fffffffu);
-    CHECK(qw_djvu_parse_page_count(document, document_size, &page_count) ==
+    CHECK(qw_pdg_djvu_parse_page_count(document, document_size, &page_count) ==
           PDG_ERR_FORMAT);
     return 0;
 }

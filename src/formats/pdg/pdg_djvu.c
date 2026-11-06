@@ -1,4 +1,4 @@
-#include "pdg_internal.h"
+﻿#include "pdg_internal.h"
 #include "../djvu/djvu_parser.h"
 
 #include <limits.h>
@@ -33,7 +33,7 @@ int pdg_djvu_reader_open(const uint8_t *data,
     }
     *out_reader = NULL;
     *out_page_count = 0;
-    rc = qw_djvu_parse_page_count(data, size, &parsed_page_count);
+    rc = qw_pdg_djvu_parse_page_count(data, size, &parsed_page_count);
     if (rc != PDG_OK) return rc;
     if (!parsed_page_count || parsed_page_count > (size_t)INT_MAX) {
         return PDG_ERR_RESOURCE_LIMIT;

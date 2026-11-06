@@ -1,4 +1,4 @@
-#include "djvu_parser.h"
+﻿#include "djvu_parser.h"
 
 #include "pdg.h"
 
@@ -74,7 +74,7 @@ static int djvu_validate_page(const uint8_t *form_data, size_t form_size)
     return djvu_validate_form_chunks(form_data, form_size, "DJVU", 1);
 }
 
-int qw_djvu_probe(const void *data, size_t size)
+int qw_pdg_djvu_probe(const void *data, size_t size)
 {
     const uint8_t *bytes = (const uint8_t *)data;
     if (!bytes || size < 16u || memcmp(bytes, "AT&TFORM", 8u) != 0) {
@@ -84,7 +84,7 @@ int qw_djvu_probe(const void *data, size_t size)
            memcmp(bytes + 12u, "DJVM", 4u) == 0;
 }
 
-int qw_djvu_parse_page_count(const void *data,
+int qw_pdg_djvu_parse_page_count(const void *data,
                              size_t size,
                              size_t *out_page_count)
 {
@@ -98,7 +98,7 @@ int qw_djvu_parse_page_count(const void *data,
 
     if (!data || !size || !out_page_count) return PDG_ERR_INVALID_ARGUMENT;
     *out_page_count = 0u;
-    if (!qw_djvu_probe(data, size)) return PDG_ERR_UNSUPPORTED;
+    if (!qw_pdg_djvu_probe(data, size)) return PDG_ERR_UNSUPPORTED;
 
     form_length = djvu_read_u32_be(bytes + 8u);
     if (form_length < 4u || (uint64_t)form_length != (uint64_t)(size - 12u)) {
