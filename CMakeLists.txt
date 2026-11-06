@@ -3,11 +3,9 @@ project(QuirewisePDG VERSION 0.1.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-find_package(PkgConfig REQUIRED)
+include(CTest)
 find_package(QuirewiseImage CONFIG REQUIRED)
 find_package(QuirewiseCrypto CONFIG REQUIRED)
-
-pkg_check_modules(QW_DJVU REQUIRED ddjvuapi)
 
 set(QW_PDG_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -37,7 +35,6 @@ target_include_directories(quirewise_pdg PUBLIC
 target_link_libraries(quirewise_pdg PRIVATE
     Quirewise::Image
     Quirewise::Crypto
-    ${QW_DJVU_LIBRARIES}
     "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
 
 install(TARGETS quirewise_pdg EXPORT QuirewisePDGTargets
@@ -61,3 +58,18 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/QuirewisePDGConfigVersion.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
+
+if(BUILD_TESTING)
+    add_executable(quirewise_pdg_djvu_unsupported_test
+        tests/djvu_unsupported_test.c)
+    target_compile_features(quirewise_pdg_djvu_unsupported_test PRIVATE c_std_11)
+    target_include_directories(quirewise_pdg_djvu_unsupported_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdg"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/djvu")
+    target_link_libraries(quirewise_pdg_djvu_unsupported_test PRIVATE
+        quirewise_pdg Quirewise::Image Quirewise::Crypto
+        "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
+    add_test(NAME quirewise_pdg_djvu_unsupported
+        COMMAND quirewise_pdg_djvu_unsupported_test)
+endif()
