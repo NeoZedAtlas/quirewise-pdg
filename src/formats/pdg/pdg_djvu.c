@@ -1,23 +1,31 @@
-﻿#include "pdg_internal.h"
+#include "pdg_internal.h"
 #include "../djvu/djvu_parser.h"
+#include "quirewise/djvu.h"
 
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* DjVu support in Quirewise is being replaced by an internal decoder.
- *
- * The structure parser (src/formats/djvu/djvu_parser.c) already validates
- * FORM/DJVU/DJVM containers and derives the page count. Pixel rendering
- * (BZZ, JB2, IW44) is not implemented yet, so every render request returns a
- * stable PDG_ERR_UNSUPPORTED without publishing partial output. No third-party
- * DjVu library is linked, included, or discovered by the build. */
+/* DjVu decoding is delegated to the Page package's internal decoder
+ * (vendored MIT djvudec). The PDG structure probe and page count use the same
+ * entry points, so structure validation and rendering share one bounds check. */
 
 struct PdgDjvuReader {
     const uint8_t *data;
     size_t size;
     size_t page_count;
 };
+
+static int pdg_map_djvu_status(QwDjvuStatus status)
+{
+    switch (status) {
+    case QW_DJVU_OK: return PDG_OK;
+    case QW_DJVU_ERR_INVALID_ARGUMENT: return PDG_ERR_INVALID_ARGUMENT;
+    case QW_DJVU_ERR_UNSUPPORTED: return PDG_ERR_UNSUPPORTED;
+    case QW_DJVU_ERR_RESOURCE_LIMIT: return PDG_ERR_RESOURCE_LIMIT;
+    default: return PDG_ERR_FORMAT;
+    }
+}
 
 int pdg_djvu_reader_open(const uint8_t *data,
                          size_t size,
@@ -26,15 +34,15 @@ int pdg_djvu_reader_open(const uint8_t *data,
 {
     PdgDjvuReader *reader;
     size_t parsed_page_count = 0;
-    int rc;
+    QwDjvuStatus status;
 
     if (!data || !size || !out_reader || !out_page_count) {
         return PDG_ERR_INVALID_ARGUMENT;
     }
     *out_reader = NULL;
     *out_page_count = 0;
-    rc = qw_pdg_djvu_parse_page_count(data, size, &parsed_page_count);
-    if (rc != PDG_OK) return rc;
+    status = qw_djvu_get_page_count(data, size, &parsed_page_count);
+    if (status != QW_DJVU_OK) return pdg_map_djvu_status(status);
     if (!parsed_page_count || parsed_page_count > (size_t)INT_MAX) {
         return PDG_ERR_RESOURCE_LIMIT;
     }
@@ -53,14 +61,28 @@ int pdg_djvu_reader_render_page(PdgDjvuReader *reader,
                                 const PdgHeader *header,
                                 PdgImage *out)
 {
+    QwDjvuImage image;
+    QwDjvuStatus status;
+
     if (!reader || !header || !out || page_index >= reader->page_count) {
         return PDG_ERR_INVALID_ARGUMENT;
     }
     memset(out, 0, sizeof(*out));
-    /* Container and page count are validated, but the internal BZZ/JB2/IW44
-     * decoder does not exist yet. Report a deterministic unsupported status so
-     * callers never receive partial or mis-decoded pixels. */
-    return PDG_ERR_UNSUPPORTED;
+    memset(&image, 0, sizeof(image));
+    status = qw_djvu_render_page(reader->data, reader->size, page_index, 1u,
+                                 &image);
+    if (status != QW_DJVU_OK) return pdg_map_djvu_status(status);
+    out->pixels = image.pixels;
+    out->size = image.size;
+    out->width = (uint32_t)image.width;
+    out->height = (uint32_t)image.height;
+    out->stride = (uint32_t)image.stride;
+    out->format = image.format == QW_DJVU_PIXEL_RGB24 ? PDG_PIXEL_RGB24
+                                                      : PDG_PIXEL_GRAY8;
+    out->header = *header;
+    image.pixels = NULL;
+    qw_djvu_image_free(&image);
+    return PDG_OK;
 }
 
 void pdg_djvu_reader_close(PdgDjvuReader *reader)
@@ -100,13 +122,7 @@ static int render_djvu_pages(const uint8_t *data,
         pdg_djvu_reader_close(reader);
         return PDG_ERR_OUT_OF_MEMORY;
     }
-    rc = pdg_djvu_reader_render_page(reader, 0u, header, &images[0]);
-    if (rc != PDG_OK) {
-        free(images);
-        pdg_djvu_reader_close(reader);
-        return rc;
-    }
-    for (size_t index = 1; index < image_count; ++index) {
+    for (size_t index = 0; index < image_count; ++index) {
         rc = pdg_djvu_reader_render_page(reader, index, header, &images[index]);
         if (rc != PDG_OK) {
             for (size_t done = 0; done < index; ++done) {

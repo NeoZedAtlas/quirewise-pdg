@@ -12,6 +12,7 @@ include(CMakePackageConfigHelpers)
 include(CTest)
 find_package(QuirewiseImage CONFIG REQUIRED)
 find_package(QuirewiseCrypto CONFIG REQUIRED)
+find_package(QuirewisePage CONFIG REQUIRED)
 
 set(QW_PDG_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -41,6 +42,7 @@ target_include_directories(quirewise_pdg PUBLIC
 target_link_libraries(quirewise_pdg PRIVATE
     Quirewise::Image
     Quirewise::Crypto
+    Quirewise::Page
     "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
 
 install(TARGETS quirewise_pdg EXPORT QuirewisePDGTargets
@@ -66,18 +68,20 @@ install(FILES
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/QuirewisePDG")
 
 if(BUILD_TESTING)
-    add_executable(quirewise_pdg_djvu_unsupported_test
+    add_executable(quirewise_pdg_djvu_decode_test
         tests/djvu_unsupported_test.c)
-    target_compile_features(quirewise_pdg_djvu_unsupported_test PRIVATE c_std_11)
-    target_include_directories(quirewise_pdg_djvu_unsupported_test PRIVATE
+    target_compile_features(quirewise_pdg_djvu_decode_test PRIVATE c_std_11)
+    target_compile_definitions(quirewise_pdg_djvu_decode_test PRIVATE
+        QUIREWISE_PDG_DJVU_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/../quirewise-page/tests/data/djvu/bitonal.djvu")
+    target_include_directories(quirewise_pdg_djvu_decode_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdg"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/djvu")
-    target_link_libraries(quirewise_pdg_djvu_unsupported_test PRIVATE
-        quirewise_pdg Quirewise::Image Quirewise::Crypto
+    target_link_libraries(quirewise_pdg_djvu_decode_test PRIVATE
+        quirewise_pdg Quirewise::Image Quirewise::Crypto Quirewise::Page
         "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
-    add_test(NAME quirewise_pdg_djvu_unsupported
-        COMMAND quirewise_pdg_djvu_unsupported_test)
+    add_test(NAME quirewise_pdg_djvu_decode
+        COMMAND quirewise_pdg_djvu_decode_test)
 endif()
 
 if(QUIREWISE_BUILD_SHARED AND WIN32)
