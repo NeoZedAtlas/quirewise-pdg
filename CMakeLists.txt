@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
 project(QuirewisePDG VERSION 0.1.0 LANGUAGES C)
+option(QUIREWISE_BUILD_SHARED "Build Quirewise libraries as shared libraries" OFF)
+if(QUIREWISE_BUILD_SHARED)
+    set(QW_LIBRARY_TYPE SHARED)
+else()
+    set(QW_LIBRARY_TYPE STATIC)
+endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -22,7 +28,7 @@ file(GLOB_RECURSE QW_PDG_SOURCES CONFIGURE_DEPENDS
     src/formats/pdz/*.c
     src/formats/djvu/djvu_parser.c)
 
-add_library(quirewise_pdg STATIC ${QW_PDG_SOURCES})
+add_library(quirewise_pdg ${QW_LIBRARY_TYPE} ${QW_PDG_SOURCES})
 add_library(Quirewise::PDG ALIAS quirewise_pdg)
 set_target_properties(quirewise_pdg PROPERTIES
     EXPORT_NAME PDG
@@ -72,4 +78,10 @@ if(BUILD_TESTING)
         "$<$<NOT:$<PLATFORM_ID:Windows>>:m>")
     add_test(NAME quirewise_pdg_djvu_unsupported
         COMMAND quirewise_pdg_djvu_unsupported_test)
+endif()
+
+if(QUIREWISE_BUILD_SHARED AND WIN32)
+    set_target_properties(
+        quirewise_pdg
+        PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
