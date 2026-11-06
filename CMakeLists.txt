@@ -85,3 +85,14 @@ if(QUIREWISE_BUILD_SHARED AND WIN32)
         quirewise_pdg
         PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(quirewise_pdg_fuzz_smoke tests/pdg_fuzz_smoke.c)
+    target_compile_features(quirewise_pdg_fuzz_smoke PRIVATE c_std_11)
+    target_include_directories(quirewise_pdg_fuzz_smoke PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_link_libraries(quirewise_pdg_fuzz_smoke PRIVATE Quirewise::PDG)
+    add_test(NAME quirewise_pdg_fuzz_smoke
+        COMMAND quirewise_pdg_fuzz_smoke)
+endif()
