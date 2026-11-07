@@ -2,8 +2,6 @@
 #include "../../core/byte_utils.h"
 #include "../image/image_backend.h"
 
-#include "../../backends/mupdf_backend.h"
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -242,29 +240,7 @@ int pdg_render_decoded_payload_ctx(PdgContext *ctx,
     } else if (payload->kind == PDG_OUTPUT_JP2) {
         rc = pdg_render_jp2_payload(payload->data, payload->size, &payload->header, out);
     } else if (payload->kind == PDG_OUTPUT_PDF) {
-#if defined(QUIREWISE_WITH_MUPDF)
-        QwPageImage page;
-        memset(&page, 0, sizeof(page));
-        rc = qw_mupdf_render_pdf_page(payload->data, payload->size, 0, 144u,
-                                      &page, NULL);
-        if (rc == 0 && page.kind == QW_PAGE_IMAGE_RGB24 && page.data &&
-            page.width > 0 && page.height > 0 &&
-            page.width <= UINT32_MAX / 3u) {
-            out->pixels = (uint8_t *)page.data;
-            out->size = page.size;
-            out->width = page.width;
-            out->height = page.height;
-            out->stride = page.width * 3u;
-            out->format = PDG_PIXEL_RGB24;
-            out->header = payload->header;
-            rc = PDG_OK;
-        } else {
-            free((void *)page.data);
-            rc = rc == 0 ? PDG_ERR_FORMAT : PDG_ERR_DECODE;
-        }
-#else
         rc = PDG_ERR_EXTERNAL_DECODER_REQUIRED;
-#endif
     } else if (pdg_output_requires_external_decoder(payload->kind)) {
         rc = PDG_ERR_EXTERNAL_DECODER_REQUIRED;
     } else {

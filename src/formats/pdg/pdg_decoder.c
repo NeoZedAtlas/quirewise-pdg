@@ -349,11 +349,7 @@ PDG_API int pdg_output_requires_external_decoder(PdgOutputKind kind)
 {
     switch (kind) {
     case PDG_OUTPUT_PDF:
-#if defined(QUIREWISE_WITH_MUPDF)
-        return 0;
-#else
         return 1;
-#endif
     case PDG_OUTPUT_JP2:
         return 1;
     case PDG_OUTPUT_RAW:
