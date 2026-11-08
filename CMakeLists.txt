@@ -13,6 +13,7 @@ include(CTest)
 find_package(QuirewiseImage CONFIG REQUIRED)
 find_package(QuirewiseCrypto CONFIG REQUIRED)
 find_package(QuirewisePage CONFIG REQUIRED)
+find_package(QuirewiseRuntime CONFIG REQUIRED)
 
 set(QW_PDG_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -118,3 +119,4 @@ if(BUILD_TESTING)
     add_test(NAME quirewise_pdg_pdz_pdf_geometry
         COMMAND quirewise_pdg_pdz_pdf_geometry_test)
 endif()
+target_link_libraries(quirewise_pdg PUBLIC Quirewise::Runtime)

@@ -1,6 +1,7 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+find_dependency(QuirewiseRuntime CONFIG REQUIRED)
 find_dependency(QuirewiseImage CONFIG)
 find_dependency(QuirewiseCrypto CONFIG)
 find_dependency(QuirewisePage CONFIG)
