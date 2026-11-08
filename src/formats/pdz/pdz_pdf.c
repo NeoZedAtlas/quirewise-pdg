@@ -314,6 +314,10 @@ static int pdf_write_images(const PdzPdfImage *images, size_t count, int page_mo
         double image_height;
         double page_width;
         double page_height;
+        double draw_width;
+        double draw_height;
+        double draw_x = 0.0;
+        double draw_y = 0.0;
         size_t page_id = page_ids[index];
         size_t content_id = page_id + 1u;
         size_t image_id = page_id + 2u;
@@ -324,9 +328,27 @@ static int pdf_write_images(const PdzPdfImage *images, size_t count, int page_mo
         if (page_mode == PDZ_PDF_PAGE_IMAGE) {
             page_width = image_width * 72.0 / PDZ_PDF_DPI;
             page_height = image_height * 72.0 / PDZ_PDF_DPI;
+            draw_width = page_width;
+            draw_height = page_height;
         } else {
+            /* A4 portrait: keep the aspect ratio, fit by the tighter axis and
+             * centre. The image's physical size is its pixel size at
+             * PDZ_PDF_DPI; the content stream must use the same units as the
+             * page box, otherwise the image overflows by DPI/72. */
+            double image_pt_width = image_width * 72.0 / PDZ_PDF_DPI;
+            double image_pt_height = image_height * 72.0 / PDZ_PDF_DPI;
+            double scale_w;
+            double scale_h;
+            double scale;
             page_width = 595.276;
             page_height = 841.89;
+            scale_w = page_width / image_pt_width;
+            scale_h = page_height / image_pt_height;
+            scale = scale_w < scale_h ? scale_w : scale_h;
+            draw_width = image_pt_width * scale;
+            draw_height = image_pt_height * scale;
+            draw_x = (page_width - draw_width) / 2.0;
+            draw_y = (page_height - draw_height) / 2.0;
         }
         rc = pdf_begin_object(&pdf, offsets, object_count, page_id);
         if (rc == PDG_OK) {
@@ -342,8 +364,8 @@ static int pdf_write_images(const PdzPdfImage *images, size_t count, int page_mo
         if (rc == PDG_OK) {
             char content[256];
             int content_length = snprintf(content, sizeof(content),
-                                          "q %.3f 0 0 %.3f 0 0 cm /Im0 Do Q\n",
-                                          image_width, image_height);
+                                          "q %.3f 0 0 %.3f %.3f %.3f cm /Im0 Do Q\n",
+                                          draw_width, draw_height, draw_x, draw_y);
             if (content_length < 0 || (size_t)content_length >= sizeof(content)) {
                 rc = PDG_ERR_FORMAT;
             } else {

@@ -107,4 +107,14 @@ if(BUILD_TESTING)
         $<$<NOT:$<PLATFORM_ID:Windows>>:pthread>)
     add_test(NAME quirewise_pdg_parallel
         COMMAND quirewise_pdg_parallel_test)
+
+    add_executable(quirewise_pdg_pdz_pdf_geometry_test
+        tests/pdz_pdf_geometry_test.c)
+    target_compile_features(quirewise_pdg_pdz_pdf_geometry_test PRIVATE c_std_11)
+    target_include_directories(quirewise_pdg_pdz_pdf_geometry_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_link_libraries(quirewise_pdg_pdz_pdf_geometry_test PRIVATE
+        Quirewise::PDG)
+    add_test(NAME quirewise_pdg_pdz_pdf_geometry
+        COMMAND quirewise_pdg_pdz_pdf_geometry_test)
 endif()

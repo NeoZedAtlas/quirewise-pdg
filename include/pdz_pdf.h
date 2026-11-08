@@ -2,9 +2,8 @@
 #define PDZ_PDF_H
 
 /*
- * PDF output for the PDZ layer: a self-contained writer, image embedder and
- * classic-xref merger. No third-party dependency, consistent with the rest of
- * C_Performance.
+ * PDF output for the PDZ layer: a self-contained classic-xref writer and image
+ * embedder. No third-party dependency, consistent with the rest of Quirewise.
  *
  * The standalone writer currently provides the image-page route. Native PDF
  * member merging is exposed as a separate API and reports unsupported until a
@@ -17,14 +16,22 @@
  *       one file (pdz_pdf_from_pdz). 96304257.pdz / 01.pdz / 03.pdz.
  *
  *   Route 2 ("image pages")
- *       Everything else stores one page per member. Each page is recovered as a
- *       complete image bitstream and embedded verbatim: JPEG through
- *       /DCTDecode, CCITT Group4/MMR through /CCITTFaxDecode. Nothing is
- *       re-encoded, so the pages are lossless with respect to the source.
+ *       Everything else stores one page per member. pdz_pdf_from_images()
+ *       embeds an already-encoded page verbatim: JPEG through /DCTDecode,
+ *       CCITT Group 4 through /CCITTFaxDecode, JP2 through /JPXDecode. The
+ *       library's own decode pipeline (pdz_pdf_from_pdg_files /
+ *       pdz_pdf_from_pdz) first decodes pages to GRAY8/RGB24 and therefore
+ *       stores raw samples for those pages; only callers that hand over an
+ *       encoded bitstream keep it byte-for-byte.
  *       02.pdz / 05.pdz / 06.pdz / 15049151.pdz / 666.pdz.
  *
+ * Route 1 ("native PDF members") is not implemented in this package yet:
+ * pdz_pdf_from_pdz() reports PDG_ERR_UNSUPPORTED when it meets a 0x1A member,
+ * and pdz_pdf_merge() is a placeholder that also reports unsupported.
+ *
  * Route 2 page selection is convention-based (SSReader member naming), NOT
- * oracle-verified; see PDZ_PDF_PAGES_AUTO and docs/authoritative/PDZ_TO_PDF.md.
+ * oracle-verified; the rules are implemented in pdz_pdf.c next to the page
+ * filters they feed.
  */
 
 #include "pdz.h"
@@ -58,7 +65,7 @@ typedef enum PdzPdfPageRule {
 } PdzPdfPageRule;
 
 #define PDZ_PDF_ROUTE_NONE 0
-#define PDZ_PDF_ROUTE_MEMBERS 1 /*!< merged native 0x1A member PDFs */
+#define PDZ_PDF_ROUTE_MEMBERS 1 /*!< native 0x1A members; reported, not implemented */
 #define PDZ_PDF_ROUTE_IMAGES 2  /*!< pages rebuilt from image members */
 
 /*! What pdz_pdf_from_pdz() actually did, for diagnostics and acceptance. */
@@ -113,10 +120,12 @@ PDG_API int pdz_pdf_merge(const uint8_t *const *pdfs,
 /*!
  * Build a PDF from standalone page images.
  *
- * Every entry is a *complete* bitstream that PDF can carry as an image XObject,
- * so nothing is re-encoded and the pages stay lossless with respect to the
- * source. Used by route 2 and by the ``--pdg DIR`` mode, where each input is a
- * single-page PDG file.
+ * Entries stay verbatim when they are already encoded for PDF: JPEG becomes
+ * /DCTDecode, CCITT Group 4 becomes /CCITTFaxDecode and JP2 becomes /JPXDecode.
+ * GRAY8/RGB24 entries are raw samples and are stored uncompressed. The
+ * library's own decode pipeline hands over decoded samples, so only callers
+ * that pass an encoded bitstream keep the source bytes. Used by route 2 and by
+ * the ``--pdg DIR`` mode, where each input is a single-page PDG file.
  */
 /* Compatibility names retained for existing PDZ/PDG consumers. */
 typedef QwPageImageKind PdzPdfImageKind;
