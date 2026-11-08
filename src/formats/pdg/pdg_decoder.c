@@ -1,4 +1,4 @@
-#include "pdg_internal.h"
+﻿#include "pdg_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@ static int read_file(const char *path, uint8_t **data_out, size_t *size_out)
         return PDG_ERR_INVALID_ARGUMENT;
     }
 
-    FILE *fp = fopen(path, "rb");
+    FILE *fp = pdg_fopen_utf8(path, "rb");
     if (!fp) {
         return PDG_ERR_IO;
     }
@@ -260,6 +260,48 @@ PDG_API int pdg_decode_file(const char *path, PdgBuffer *out)
     return decode_decrypted_buffer(NULL, out);
 }
 
+PDG_API int pdg_render_to_ccitt(const void *data, size_t size, PdgBuffer *out)
+{
+    PdgBuffer payload;
+    uint8_t *bits = NULL;
+    size_t bits_size = 0u;
+    int rc;
+
+    if (!data || !size || !out) {
+        return PDG_ERR_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+    memset(&payload, 0, sizeof(payload));
+    rc = pdg_decrypt_memory(data, size, &payload);
+    if (rc != PDG_OK) {
+        pdg_buffer_free(&payload);
+        return rc;
+    }
+    if (payload.kind != PDG_OUTPUT_RAW || !is_group4_payload(&payload)) {
+        pdg_buffer_free(&payload);
+        return PDG_ERR_UNSUPPORTED;
+    }
+    rc = qw_pdg_decode_g4(payload.data, payload.size,
+                          (int)payload.header.width, (int)payload.header.height,
+                          &bits, &bits_size);
+    if (rc != PDG_OK) {
+        pdg_buffer_free(&payload);
+        return rc;
+    }
+    rc = pdg_encode_g4_horizontal(bits, bits_size,
+                                  payload.header.width, payload.header.height,
+                                  &out->data, &out->size);
+    free(bits);
+    if (rc == PDG_OK) {
+        out->kind = PDG_OUTPUT_CCITT;
+        out->header = payload.header;
+    } else {
+        pdg_buffer_free(out);
+    }
+    pdg_buffer_free(&payload);
+    return rc;
+}
+
 PDG_API void pdg_buffer_free(PdgBuffer *buffer)
 {
     if (!buffer) {
@@ -316,6 +358,8 @@ PDG_API const char *pdg_output_extension(PdgOutputKind kind)
         return "pdf";
     case PDG_OUTPUT_JP2:
         return "jp2";
+    case PDG_OUTPUT_CCITT:
+        return "g4";
     case PDG_OUTPUT_RAW:
     default:
         return "bin";
@@ -339,6 +383,8 @@ PDG_API const char *pdg_output_kind_name(PdgOutputKind kind)
         return "PDF";
     case PDG_OUTPUT_JP2:
         return "JPEG 2000";
+    case PDG_OUTPUT_CCITT:
+        return "CCITT G4";
     case PDG_OUTPUT_RAW:
     default:
         return "raw";
@@ -362,3 +408,5 @@ PDG_API int pdg_output_requires_external_decoder(PdgOutputKind kind)
         return 0;
     }
 }
+
+

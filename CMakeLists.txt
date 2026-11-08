@@ -118,5 +118,26 @@ if(BUILD_TESTING)
         Quirewise::PDG)
     add_test(NAME quirewise_pdg_pdz_pdf_geometry
         COMMAND quirewise_pdg_pdz_pdf_geometry_test)
+
+    add_executable(quirewise_pdg_pdz_pdf_image_modes_test
+        tests/pdz_pdf_image_modes_test.c)
+    target_compile_features(quirewise_pdg_pdz_pdf_image_modes_test PRIVATE c_std_11)
+    target_include_directories(quirewise_pdg_pdz_pdf_image_modes_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    target_link_libraries(quirewise_pdg_pdz_pdf_image_modes_test PRIVATE
+        Quirewise::PDG)
+    add_test(NAME quirewise_pdg_pdz_pdf_image_modes
+        COMMAND quirewise_pdg_pdz_pdf_image_modes_test)
+
+    add_executable(quirewise_pdg_fax_encode_test
+        tests/pdg_fax_encode_test.c)
+    target_compile_features(quirewise_pdg_fax_encode_test PRIVATE c_std_11)
+    target_include_directories(quirewise_pdg_fax_encode_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_link_libraries(quirewise_pdg_fax_encode_test PRIVATE
+        Quirewise::PDG)
+    add_test(NAME quirewise_pdg_fax_encode
+        COMMAND quirewise_pdg_fax_encode_test)
 endif()
 target_link_libraries(quirewise_pdg PUBLIC Quirewise::Runtime)

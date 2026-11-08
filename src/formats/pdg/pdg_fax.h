@@ -24,4 +24,14 @@ int qw_pdg_decode_g4(const uint8_t *data,
                   uint8_t **bits_out,
                   size_t *bits_size_out);
 
+/* Encode packed 1-bit rows (MSB first, 1 = black) as ITU-T T.6. The stream is
+ * built from horizontal-mode pairs only, so it trades ~3x size for a simple
+ * decode-side state machine. */
+int pdg_encode_g4_horizontal(const uint8_t *bits,
+                             size_t bits_size,
+                             uint32_t width,
+                             uint32_t height,
+                             uint8_t **out_data,
+                             size_t *out_size);
+
 #endif

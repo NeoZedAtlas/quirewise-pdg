@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define PDG_HEADER_SIZE 0x8c
 
@@ -29,6 +30,8 @@ struct PdgContext {
     int *fax_current;
     size_t fax_change_capacity;
 };
+
+FILE *pdg_fopen_utf8(const char *path, const char *mode);
 
 int pdg_parse_header(const uint8_t *file_data, size_t file_size, PdgHeader *header);
 PdgOutputKind pdg_detect_payload_kind(const uint8_t *data, size_t size);
@@ -103,3 +106,4 @@ int pdg_djvu_reader_render_page(PdgDjvuReader *reader,
 void pdg_djvu_reader_close(PdgDjvuReader *reader);
 
 #endif
+

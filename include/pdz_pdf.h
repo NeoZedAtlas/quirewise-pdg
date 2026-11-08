@@ -148,6 +148,48 @@ PDG_API int pdz_pdf_from_images(const PdzPdfImage *images,
 /*! Release a PDF buffer returned by any pdz_pdf_* producer. */
 PDG_API void pdz_pdf_free(void *pdf);
 
+/* ------------------------------------------------------------------ */
+/* Streaming writer                                                    */
+/* ------------------------------------------------------------------ */
+
+/*!
+ * Byte sink for the streaming writer. Returning a non-zero value aborts the
+ * writer with PDG_ERR_IO. The library never performs file I/O itself, so the
+ * caller decides where the bytes go (handle, socket, memory).
+ */
+typedef int (*PdzPdfWriteFn)(void *context, const void *data, size_t size);
+
+typedef struct PdzPdfWriter PdzPdfWriter;
+
+/*!
+ * Open a streaming PDF writer. The header and the document catalog are
+ * written immediately; each page is written and released by
+ * pdz_pdf_writer_add_page, so memory stays bounded by one page instead of the
+ * whole book. page_mode is a PdzPdfPageMode value.
+ *
+ * The caller owns *out_writer and releases it with pdz_pdf_writer_destroy().
+ * A writer that is destroyed without a successful finish leaves a partial
+ * stream on the sink.
+ */
+PDG_API int pdz_pdf_writer_create(int page_mode,
+                                  PdzPdfWriteFn write_fn,
+                                  void *context,
+                                  PdzPdfWriter **out_writer);
+
+/*! Append one page. The image bytes are consumed before this call returns. */
+PDG_API int pdz_pdf_writer_add_page(PdzPdfWriter *writer,
+                                    const PdzPdfImage *image);
+
+/*!
+ * Write the page tree, the cross-reference table and the trailer, then flush
+ * the sink. Reports the number of pages written; a writer with no pages
+ * returns PDG_ERR_EMPTY and writes nothing further.
+ */
+PDG_API int pdz_pdf_writer_finish(PdzPdfWriter *writer, size_t *out_pages);
+
+/*! Release the writer. NULL is accepted. No further bytes are written. */
+PDG_API void pdz_pdf_writer_destroy(PdzPdfWriter *writer);
+
 /*! ``<pages>`` from a container's meta.xml, or 0 when it cannot be read. */
 PDG_API uint32_t pdz_pdf_meta_pages(const void *xml, size_t size);
 

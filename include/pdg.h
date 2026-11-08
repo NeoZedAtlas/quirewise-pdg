@@ -51,7 +51,9 @@ typedef enum PdgOutputKind {
     PDG_OUTPUT_DJVU,
     PDG_OUTPUT_TIFF,
     PDG_OUTPUT_PDF,
-    PDG_OUTPUT_JP2
+    PDG_OUTPUT_JP2,
+    /* Standard ITU-T T.6 bitstream produced by pdg_render_to_ccitt(). */
+    PDG_OUTPUT_CCITT
 } PdgOutputKind;
 
 typedef enum PdgPixelFormat {
@@ -124,6 +126,22 @@ PDG_API int pdg_render_memory_ctx(PdgContext *ctx, const void *data, size_t size
 PDG_API int pdg_render_memory_batch(PdgRenderItem *items, size_t count, size_t jobs);
 PDG_API int pdg_decode_file(const char *path, PdgBuffer *out);
 PDG_API int pdg_decrypt_file(const char *path, PdgBuffer *out);
+
+/*!
+ * Re-encode a bitonal PDG page as a standard ITU-T T.6 (CCITT Group 4)
+ * bitstream. The page keeps its exact pixels; only the container changes, so a
+ * PDF writer can embed the result with /CCITTFaxDecode instead of storing one
+ * byte per pixel. SSReader's private Group 4 variant (type 0x00 and the
+ * 0x02/0x03/0x1x families) is decoded first through the regular decoder.
+ *
+ * JPEG, PNG and JPEG 2000 pages already carry their own encoding and report
+ * PDG_ERR_UNSUPPORTED: embed those verbatim. The output is owned by the caller
+ * and released with pdg_buffer_free(); out->header reports the pixel size.
+ *
+ * Paths passed to pdg_decode_file/pdg_decrypt_file are UTF-8, including on
+ * Windows.
+ */
+PDG_API int pdg_render_to_ccitt(const void *data, size_t size, PdgBuffer *out);
 PDG_API void pdg_buffer_free(PdgBuffer *buffer);
 PDG_API void pdg_image_free(PdgImage *image);
 
