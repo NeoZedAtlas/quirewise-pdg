@@ -22,8 +22,7 @@ set(QW_PDG_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/pdz"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/image"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formats/djvu"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/backends"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/backends")
 
 file(GLOB_RECURSE QW_PDG_SOURCES CONFIGURE_DEPENDS
     src/formats/pdg/*.c

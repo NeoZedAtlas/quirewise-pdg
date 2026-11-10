@@ -7,7 +7,7 @@
 
 #include <limits.h>
 
-#include "stb_image.h"
+#include <quirewise/image.h>
 
 
 
@@ -145,7 +145,15 @@ static int render_encoded_image_to_rgb24(const uint8_t *data, size_t size, const
 {
     uint32_t parsed_width;
     uint32_t parsed_height;
+    QwImage image;
+    int width;
+    int height;
+    int status;
     int rc;
+    size_t stride;
+    size_t image_size;
+    size_t i;
+    uint8_t *pixels;
 
     if (data && out && qw_png_probe(data, size)) {
         return render_png_to_rgb24(data, size, header, out);
@@ -159,38 +167,41 @@ static int render_encoded_image_to_rgb24(const uint8_t *data, size_t size, const
         return PDG_ERR_RESOURCE_LIMIT;
     }
 
-    int width = 0;
-    int height = 0;
-    int components = 0;
-    unsigned char *decoded = stbi_load_from_memory(data, (int)size, &width, &height, &components, 3);
-    (void)components;
-    if (!decoded) {
-        return PDG_ERR_DECODE;
-    }
+    status = qw_image_decode(data, size, &image);
+    if (status != QW_IMAGE_OK) return PDG_ERR_DECODE;
+    width = (int)image.width;
+    height = (int)image.height;
     if (width <= 0 || height <= 0) {
-        stbi_image_free(decoded);
+        qw_image_free(&image);
         return PDG_ERR_DECODE;
     }
     if ((uint32_t)width != parsed_width ||
         (uint32_t)height != parsed_height) {
-        stbi_image_free(decoded);
+        qw_image_free(&image);
         return PDG_ERR_FORMAT;
     }
-
-    size_t stride = (size_t)width * 3u;
-    size_t image_size = stride * (size_t)height;
+    stride = (size_t)width * 3u;
+    image_size = stride * (size_t)height;
     if (stride == 0 || image_size / stride != (size_t)height) {
-        stbi_image_free(decoded);
+        qw_image_free(&image);
         return PDG_ERR_FORMAT;
     }
-
-    uint8_t *pixels = (uint8_t *)malloc(image_size);
+    pixels = (uint8_t *)malloc(image_size);
     if (!pixels) {
-        stbi_image_free(decoded);
+        qw_image_free(&image);
         return PDG_ERR_OUT_OF_MEMORY;
     }
-    memcpy(pixels, decoded, image_size);
-    stbi_image_free(decoded);
+    if (image.format == QW_IMAGE_PIXEL_RGB24) {
+        memcpy(pixels, image.pixels, image_size);
+    } else {
+        for (i = 0; i < (size_t)width * (size_t)height; ++i) {
+            uint8_t gray = image.pixels[i];
+            pixels[i * 3u + 0u] = gray;
+            pixels[i * 3u + 1u] = gray;
+            pixels[i * 3u + 2u] = gray;
+        }
+    }
+    qw_image_free(&image);
 
     memset(out, 0, sizeof(*out));
     out->pixels = pixels;
