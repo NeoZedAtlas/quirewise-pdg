@@ -817,6 +817,46 @@ PDG_API int pdz_pdfpdg_is_member(const void *member, size_t size)
            header.data_offset == PDG_HEADER_SIZE && header.data_size != 0u;
 }
 
+PDG_API int pdz_pdfpdg_decode_member(const void *member, size_t size,
+                                     PdzBuffer *out)
+{
+    PdgBuffer decoded;
+    uint8_t *pdf = NULL;
+    size_t pdf_size = 0u;
+    int rc;
+
+    if (!member || !out || !size) {
+        return PDG_ERR_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+    if (!pdz_pdfpdg_is_member(member, size)) {
+        return PDG_ERR_FORMAT;
+    }
+    memset(&decoded, 0, sizeof(decoded));
+    rc = pdg_decrypt_memory(member, size, &decoded);
+    if (rc != PDG_OK) {
+        pdg_buffer_free(&decoded);
+        return rc;
+    }
+    if (decoded.header.type != 0x1au || !decoded.data || decoded.size == 0u) {
+        pdg_buffer_free(&decoded);
+        return PDG_ERR_FORMAT;
+    }
+    rc = pdz_inflate_zlib(decoded.data, decoded.size, &pdf, &pdf_size);
+    pdg_buffer_free(&decoded);
+    if (rc != PDG_OK) {
+        free(pdf);
+        return PDG_ERR_FORMAT;
+    }
+    if (pdf_size < 4u || memcmp(pdf, "%PDF", 4u) != 0) {
+        free(pdf);
+        return PDG_ERR_FORMAT;
+    }
+    out->data = pdf;
+    out->size = pdf_size;
+    return PDG_OK;
+}
+
 static int member_is_attachment(const PdzMember *member)
 {
     size_t length;
@@ -826,6 +866,25 @@ static int member_is_attachment(const PdzMember *member)
     length = strnlen(member->name, PDZ_NAME_SIZE);
     return length >= 4u && strncmp(member->name, "att", 3u) == 0 &&
            name_is_digits(member->name + 3u, length - 3u);
+}
+
+PDG_API int pdz_pdf_member_selected(const PdzMember *member, int rule)
+{
+    if (!member) {
+        return 0;
+    }
+    switch (rule) {
+    case PDZ_PDF_PAGES_BODY:
+        return member_is_body(member);
+    case PDZ_PDF_PAGES_BODY_ATT:
+        return member_is_body(member) || member_is_attachment(member);
+    case PDZ_PDF_PAGES_AUTO:
+    case PDZ_PDF_PAGES_ALL:
+    default:
+        /* AUTO is only a request; pdz_pdf_resolve_rule() turns it into a
+         * concrete rule. Treating it as ALL keeps a direct call predictable. */
+        return 1;
+    }
 }
 
 PDG_API int pdz_pdf_from_images(const PdzPdfImage *images, size_t count,
@@ -885,14 +944,70 @@ PDG_API size_t pdz_pdf_rule_count(const PdzMember *members, size_t count, int ru
         return 0u;
     }
     for (index = 0u; index < count; ++index) {
-        if (rule == PDZ_PDF_PAGES_ALL ||
-            (rule == PDZ_PDF_PAGES_BODY && member_is_body(&members[index])) ||
-            (rule == PDZ_PDF_PAGES_BODY_ATT &&
-             (member_is_body(&members[index]) || member_is_attachment(&members[index])))) {
+        if (pdz_pdf_member_selected(&members[index], rule)) {
             ++selected;
         }
     }
     return selected;
+}
+
+/* Declared page count from a container's meta.xml member, or 0 when absent. */
+static uint32_t pdz_pdf_declared_pages(const void *data, size_t size,
+                                       const PdzMember *members, size_t count,
+                                       const char *key_string)
+{
+    size_t index;
+    if (!data || !members) {
+        return 0u;
+    }
+    for (index = 0u; index < count; ++index) {
+        PdzBuffer payload;
+        uint32_t pages;
+        if (strcmp(members[index].name, "meta.xml") != 0) {
+            continue;
+        }
+        memset(&payload, 0, sizeof(payload));
+        if (pdz_member_payload(data, size, &members[index], key_string,
+                               &payload) != PDG_OK) {
+            return 0u;
+        }
+        pages = pdz_pdf_meta_pages(payload.data, payload.size);
+        pdz_buffer_free(&payload);
+        return pages;
+    }
+    return 0u;
+}
+
+PDG_API int pdz_pdf_resolve_rule(const void *data, size_t size,
+                                 const PdzMember *members, size_t count,
+                                 const char *key_string, int requested_rule)
+{
+    static const int preference[] = {
+        PDZ_PDF_PAGES_BODY_ATT,
+        PDZ_PDF_PAGES_BODY,
+        PDZ_PDF_PAGES_ALL,
+    };
+    uint32_t declared;
+    size_t index;
+
+    if (requested_rule != PDZ_PDF_PAGES_AUTO) {
+        if (requested_rule < PDZ_PDF_PAGES_AUTO ||
+            requested_rule > PDZ_PDF_PAGES_ALL) {
+            return PDG_ERR_INVALID_ARGUMENT;
+        }
+        return requested_rule;
+    }
+    declared = pdz_pdf_declared_pages(data, size, members, count, key_string);
+    if (declared > 0u) {
+        for (index = 0u; index < sizeof(preference) / sizeof(preference[0]);
+             ++index) {
+            if (pdz_pdf_rule_count(members, count, preference[index]) ==
+                (size_t)declared) {
+                return preference[index];
+            }
+        }
+    }
+    return PDZ_PDF_PAGES_ALL;
 }
 
 PDG_API const char *pdz_pdf_page_rule_name(int rule)
@@ -1029,19 +1144,30 @@ PDG_API int pdz_pdf_from_pdz(const void *data, size_t size,
     if (rc != PDG_OK) {
         goto cleanup;
     }
-    if (report) {
-        report->members_total = member_count;
-        report->page_rule = page_rule == PDZ_PDF_PAGES_AUTO ? PDZ_PDF_PAGES_ALL : page_rule;
+    rc = pdz_pdf_resolve_rule(data, size, members, member_count, key_string,
+                              page_rule);
+    if (rc < 0) {
+        goto cleanup;
     }
-    if (page_rule == PDZ_PDF_PAGES_AUTO) {
-        page_rule = PDZ_PDF_PAGES_ALL;
+    page_rule = rc;
+    if (report) {
+        size_t rule_index;
+        report->members_total = member_count;
+        report->page_rule = page_rule;
+        report->declared_pages = pdz_pdf_declared_pages(data, size, members,
+                                                        member_count,
+                                                        key_string);
+        for (rule_index = 0u;
+             rule_index < sizeof(report->rule_counts) /
+                              sizeof(report->rule_counts[0]);
+             ++rule_index) {
+            report->rule_counts[rule_index] =
+                pdz_pdf_rule_count(members, member_count, (int)rule_index);
+        }
     }
     for (index = 0u; index < member_count; ++index) {
         PdzBuffer payload = {0};
-        if (page_rule != PDZ_PDF_PAGES_ALL &&
-            ((page_rule == PDZ_PDF_PAGES_BODY && !member_is_body(&members[index])) ||
-             (page_rule == PDZ_PDF_PAGES_BODY_ATT &&
-              !member_is_body(&members[index]) && !member_is_attachment(&members[index])))) {
+        if (!pdz_pdf_member_selected(&members[index], page_rule)) {
             continue;
         }
         rc = pdz_member_payload(data, size, &members[index], key_string, &payload);
@@ -1050,12 +1176,33 @@ PDG_API int pdz_pdf_from_pdz(const void *data, size_t size,
             continue;
         }
         if (pdz_pdfpdg_is_member(payload.data, payload.size)) {
+            size_t pdf_members = 1u;
+            size_t other;
             pdz_buffer_free(&payload);
+            /* Count the remaining native PDF members so the report tells a
+             * caller how many pages the composition-layer merger would add. */
+            for (other = index + 1u; other < member_count; ++other) {
+                PdzBuffer extra = {0};
+                if (!pdz_pdf_member_selected(&members[other], page_rule)) {
+                    continue;
+                }
+                if (pdz_member_payload(data, size, &members[other], key_string,
+                                       &extra) != PDG_OK) {
+                    continue;
+                }
+                if (pdz_pdfpdg_is_member(extra.data, extra.size)) {
+                    ++pdf_members;
+                }
+                pdz_buffer_free(&extra);
+            }
             rc = PDG_ERR_UNSUPPORTED;
             if (report) {
                 report->route = PDZ_PDF_ROUTE_MEMBERS;
+                report->pdf_members = pdf_members;
                 snprintf(report->note, sizeof(report->note),
-                         "native PDF member merging is not implemented");
+                         "%zu native PDF member(s) need the composition-layer "
+                         "PDF merger",
+                         pdf_members);
             }
             goto cleanup;
         }

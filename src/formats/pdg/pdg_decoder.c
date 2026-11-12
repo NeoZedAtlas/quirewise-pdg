@@ -1,4 +1,4 @@
-﻿#include "pdg_internal.h"
+#include "pdg_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -333,7 +333,7 @@ PDG_API const char *pdg_error_string(int code)
     case PDG_ERR_EMPTY:
         return "empty input";
     case PDG_ERR_EXTERNAL_DECODER_REQUIRED:
-        return "statically linked PDF rasterizer is not included in this build";
+        return "payload decoder is outside the PDG package (PDF or JPEG 2000)";
     case PDG_ERR_RESOURCE_LIMIT:
         return "resource limit exceeded";
     default:

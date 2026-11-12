@@ -25,3 +25,11 @@ void pdz_md5_hex_upper(const void *data, size_t size, char out[33])
     out[32] = '\0';
     qw_crypto_secure_zero(digest, sizeof(digest));
 }
+
+void pdz_aes256_decrypt_block(const uint8_t in[16], const uint8_t key[32],
+                              uint8_t out[16])
+{
+    if (!in || !key || !out) return;
+    memcpy(out, in, 16u);
+    (void)qw_crypto_aes256_ecb_decrypt(key, out, 16u);
+}

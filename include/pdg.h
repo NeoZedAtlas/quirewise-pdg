@@ -120,7 +120,9 @@ PDG_API int pdg_decode_memory_ctx(PdgContext *ctx, const void *data, size_t size
 PDG_API int pdg_decrypt_memory_ctx(PdgContext *ctx, const void *data, size_t size, PdgBuffer *out);
 PDG_API int pdg_decode_memory_batch(PdgBatchItem *items, size_t count, size_t jobs);
 PDG_API int pdg_decrypt_memory_batch(PdgBatchItem *items, size_t count, size_t jobs);
-/* PDF payloads render their first page at 144 DPI when MuPDF is statically linked. */
+/* PDF/JP2 payloads cannot be rasterised inside this package: pdg_render_memory()
+ * returns PDG_ERR_EXTERNAL_DECODER_REQUIRED. The application composition layer
+ * renders PDF page payloads with the internal quirewise-document engine. */
 PDG_API int pdg_render_memory(const void *data, size_t size, PdgImage *out);
 PDG_API int pdg_render_memory_ctx(PdgContext *ctx, const void *data, size_t size, PdgImage *out);
 PDG_API int pdg_render_memory_batch(PdgRenderItem *items, size_t count, size_t jobs);

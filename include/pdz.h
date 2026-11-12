@@ -223,11 +223,13 @@ PDG_API const char *pdz_member_scope_name(int scope);
 PDG_API int pdz_pdfpdg_is_member(const void *member, size_t size);
 
 /*!
- * Decode a pdg_type 0x1A member into PDF bytes.
+ * Decode a pdg_type 0x1A member into the publisher PDF it carries.
  *
- * The member must already be decrypted (see
- * PDZ_PDFPDG_MEMBER_PREFIX_ENCRYPTED).  `out->data` is malloc'ed and owned by
- * the caller.
+ * The member must already have its Blowfish prefix decrypted (see
+ * pdz_member_payload()); the PDG page transform and the zlib stream inside are
+ * handled here. `out->data` is malloc'ed and owned by the caller. This package
+ * exposes the decoded bytes only: merging the member PDFs into one document is
+ * the composition layer's job (quirewise-document's PDF merger).
  */
 PDG_API int pdz_pdfpdg_decode_member(const void *member, size_t size, PdzBuffer *out);
 
@@ -245,7 +247,6 @@ PDG_API void pdz_md5_hex_upper(const void *data, size_t size, char out[33]);
 /*! AES-256 ECB decryption of one 16-byte block. */
 PDG_API void pdz_aes256_decrypt_block(const uint8_t in[16], const uint8_t key[32],
                                       uint8_t out[16]);
-
 /*! ``pdgDll!DAT_10103390``: the machine-key alphabet (94 chars, NUL padded). */
 extern const char pdz_ssct_hdd_alphabet[95];
 

@@ -5,15 +5,19 @@
  * PDF output for the PDZ layer: a self-contained classic-xref writer and image
  * embedder. No third-party dependency, consistent with the rest of Quirewise.
  *
- * The standalone writer currently provides the image-page route. Native PDF
- * member merging is exposed as a separate API and reports unsupported until a
- * validated merger is available.
+ * The standalone writer provides the image-page route. Native PDF members are
+ * decoded by pdz_pdfpdg_decode_member(); merging those decoded PDFs into one
+ * document belongs to the composition layer, which owns the workspace PDF
+ * engine (quirewise-document). pdz_pdf_merge() therefore stays a stable
+ * PDG_ERR_UNSUPPORTED placeholder in this package.
  *
  *   Route 1 ("native PDF members")
  *       Some containers store their pages as pdg_type 0x1A members whose payload
  *       is a zlib stream holding a complete publisher PDF. Those member PDFs are
- *       the genuine vector original, so the only work left is merging them into
- *       one file (pdz_pdf_from_pdz). 96304257.pdz / 01.pdz / 03.pdz.
+ *       the genuine vector original. pdz_pdfpdg_decode_member() returns the PDF;
+ *       pdz_pdf_from_pdz() reports PDG_ERR_UNSUPPORTED and fills
+ *       PdzPdfReport.pdf_members so a caller can hand the members to the
+ *       composition-layer merger. 96304257.pdz / 01.pdz / 03.pdz.
  *
  *   Route 2 ("image pages")
  *       Everything else stores one page per member. pdz_pdf_from_images()
@@ -25,13 +29,9 @@
  *       encoded bitstream keep it byte-for-byte.
  *       02.pdz / 05.pdz / 06.pdz / 15049151.pdz / 666.pdz.
  *
- * Route 1 ("native PDF members") is not implemented in this package yet:
- * pdz_pdf_from_pdz() reports PDG_ERR_UNSUPPORTED when it meets a 0x1A member,
- * and pdz_pdf_merge() is a placeholder that also reports unsupported.
- *
  * Route 2 page selection is convention-based (SSReader member naming), NOT
- * oracle-verified; the rules are implemented in pdz_pdf.c next to the page
- * filters they feed.
+ * oracle-verified; the predicates live in pdz_pdf.c and are exposed through
+ * pdz_pdf_member_selected() so the application can share them.
  */
 
 #include "pdz.h"
@@ -58,14 +58,14 @@ typedef enum PdzPdfPageMode {
  * ``meta.xml`` page count, and only for some books.
  */
 typedef enum PdzPdfPageRule {
-    PDZ_PDF_PAGES_AUTO = 0,  /*!< pick the rule whose count matches meta.xml <pages> */
+    PDZ_PDF_PAGES_AUTO = 0,  /*!< resolve with meta.xml <pages>; falls back to ALL */
     PDZ_PDF_PAGES_BODY = 1,  /*!< NNNNNN.pdg only */
     PDZ_PDF_PAGES_BODY_ATT = 2, /*!< NNNNNN.pdg + attNNN.pdg */
     PDZ_PDF_PAGES_ALL = 3    /*!< every *.pdg member; recognized image pages use section order */
 } PdzPdfPageRule;
 
 #define PDZ_PDF_ROUTE_NONE 0
-#define PDZ_PDF_ROUTE_MEMBERS 1 /*!< native 0x1A members; reported, not implemented */
+#define PDZ_PDF_ROUTE_MEMBERS 1 /*!< native 0x1A members; decode with pdz_pdfpdg_decode_member() */
 #define PDZ_PDF_ROUTE_IMAGES 2  /*!< pages rebuilt from image members */
 
 /*! What pdz_pdf_from_pdz() actually did, for diagnostics and acceptance. */
@@ -75,10 +75,10 @@ typedef struct PdzPdfReport {
     uint32_t declared_pages;  /*!< meta.xml <pages>; 0 when absent */
     size_t members_total;     /*!< members in the catalog */
     size_t members_used;      /*!< members that became pages */
-    size_t pdf_members;       /*!< 0x1A members merged (route 1) */
+    size_t pdf_members;       /*!< selected 0x1A members the merger must handle */
     size_t pages_written;     /*!< pages in the produced PDF */
-    size_t images_jpeg;       /*!< pages embedded via /DCTDecode */
-    size_t images_ccitt;      /*!< pages embedded via /CCITTFaxDecode */
+    size_t images_jpeg;       /*!< reserved: the decode pipeline embeds raw samples */
+    size_t images_ccitt;      /*!< reserved: the decode pipeline embeds raw samples */
     size_t images_raw;        /*!< pages embedded uncompressed */
     size_t skipped;           /*!< members that could not become a page */
     size_t rule_counts[4];    /*!< member count each rule would select */
@@ -88,10 +88,13 @@ typedef struct PdzPdfReport {
 /*!
  * Convert an image-page ``%pdgz`` container into a single book PDF.
  *
- * Containers with native PDF members (``pdg_type 0x1A``) report
- * PDG_ERR_UNSUPPORTED because native member merging is not silently treated as
- * an image conversion. `key_string` may be NULL: member keys are then resolved
- * the same way as pdz_member_payload() (bookkey -> fixed fallback -> stored as-is).
+ * ``PDZ_PDF_PAGES_AUTO`` is resolved against the container's meta.xml page
+ * count (see pdz_pdf_resolve_rule()). Containers with native PDF members
+ * (``pdg_type 0x1A``) report PDG_ERR_UNSUPPORTED because merging belongs to the
+ * composition layer; ``report->pdf_members`` counts the members to hand over,
+ * and pdz_pdfpdg_decode_member() decodes each one. `key_string` may be NULL:
+ * member keys are then resolved the same way as pdz_member_payload()
+ * (bookkey -> fixed fallback -> stored as-is).
  *
  * The caller owns ``*out_pdf`` and releases it with free().
  */
@@ -209,6 +212,23 @@ PDG_API int pdz_pdf_from_pdg_files(const uint8_t *const *blobs,
 
 /*! Number of page members the given rule selects (for --pages diagnostics). */
 PDG_API size_t pdz_pdf_rule_count(const PdzMember *members, size_t count, int rule);
+
+/*!
+ * Whether a member is selected by an already-resolved rule. This is the exact
+ * predicate pdz_pdf_from_pdz() uses; AUTO is treated as ALL so a direct call
+ * stays predictable.
+ */
+PDG_API int pdz_pdf_member_selected(const PdzMember *member, int rule);
+
+/*!
+ * Resolve PDZ_PDF_PAGES_AUTO against the container's meta.xml <pages> count.
+ * Tries BODY+BODY_ATT, then BODY, then ALL, and falls back to ALL when meta.xml
+ * is missing or no rule matches. Any other requested rule is returned as-is.
+ * Returns a rule code, or PDG_ERR_INVALID_ARGUMENT for an out-of-range request.
+ */
+PDG_API int pdz_pdf_resolve_rule(const void *data, size_t size,
+                                 const PdzMember *members, size_t count,
+                                 const char *key_string, int requested_rule);
 
 PDG_API const char *pdz_pdf_page_rule_name(int rule);
 PDG_API const char *pdz_pdf_route_name(int route);
