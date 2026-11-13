@@ -10,7 +10,7 @@
  *
  * Everything in this header is transcribed from primitives that were verified
  * byte-for-byte against the official engine (pdgDll.dll) by live observation;
- * see docs/authoritative/PDZ_CONTAINER_VERIFIED.md. Nothing here is guessed.
+ * The container layout is exercised by the PDG tests in this package.
  *
  *   catalog : type-1 TEA-128, key_string is a hardcoded constant
  *   member  : type-4 Blowfish-ECB; key_string is the certificate's <bookkey>.
@@ -22,7 +22,7 @@
  *
  * A PDZ whose members carry pdg_type 0x1A is not a bag of single pages: the
  * per-page split lives in a sibling `inforule.dat` (BKRT) rule file that the
- * reader loads through pdfpdgdll.dll. See docs/authoritative/PDG_TYPE_1A.md.
+ * reader loads through pdfpdgdll.dll. The 0x1A member layout is documented here.
  */
 
 #include "pdg.h"
@@ -106,7 +106,7 @@ typedef enum PdzMemberScope {
  * pdz_inforule_rule_table() inflates it into the 2024-byte rule table
  * (10x u32 tag counts + pages*8 byte page table + members*32 byte member
  * table); pdz_inforule_rule_member() / pdz_inforule_page_member() walk it.
- * See docs/authoritative/REMAINING_THREE.md.
+ * The remaining header fields are offsets/sizes documented below.
  *
  * The header fields are offsets/sizes, NOT a page box: field_28 is the page
  * table's *size* (220*8 = 1760) and field_2c the member table's *offset*
