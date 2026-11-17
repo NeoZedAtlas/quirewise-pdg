@@ -143,11 +143,13 @@ typedef struct PdzValidation {
     uint32_t tiling_gaps;
 } PdzValidation;
 
+/*! Return the ABI version compiled into the installed PDG package. */
 PDG_API int pdz_abi_version(void);
 
 /*! 1 when the buffer starts with the `%pdgz` magic. */
 PDG_API int pdz_is_container(const void *data, size_t size);
 
+/*! Parse the container header and fill info; returns a PDG status code. */
 PDG_API int pdz_parse(const void *data, size_t size, PdzInfo *info);
 
 /*!
@@ -163,6 +165,7 @@ PDG_API int pdz_members(const void *data,
                         size_t capacity,
                         size_t *count);
 
+/*! Validate a member table against the container's record table. */
 PDG_API int pdz_validate(const void *data,
                          size_t size,
                          const PdzMember *members,
@@ -200,6 +203,7 @@ PDG_API int pdz_member_payload_ex(const void *data,
 /*! Resolve PDZ_MEMBER_SCOPE_AUTO against this container. */
 PDG_API int pdz_member_scope_for(const void *data, size_t size);
 
+/*! Return a static name for a member scope value. */
 PDG_API const char *pdz_member_scope_name(int scope);
 
 /* ------------------------------------------------------------------ 0x1A */
@@ -356,17 +360,20 @@ PDG_API int pdz_inforule_rule_member(const PdzRuleTable *table, uint32_t index,
 PDG_API int pdz_inforule_page_member(const PdzRuleTable *table, uint32_t page,
                                      uint32_t *out_index);
 
+/*! Map inforule members to page ranges; returns the count written. */
 PDG_API int pdz_inforule_member_pages(const PdzMember *members,
                                       size_t count,
                                       PdzPageRange *ranges,
                                       size_t capacity,
                                       size_t *out_count);
 
+/*! Release a buffer returned by the PDZ API; NULL is accepted. */
 PDG_API void pdz_buffer_free(PdzBuffer *buffer);
 
 /*! key16 = MD5(key_string) XOR C[4]. Exposed for callers that need it directly. */
 PDG_API int pdz_derive_key(const char *key_string, uint8_t key16[16]);
 
+/*! Return a static name for a cipher type byte. */
 PDG_API const char *pdz_cipher_name(uint8_t cipher_type);
 
 #ifdef __cplusplus
