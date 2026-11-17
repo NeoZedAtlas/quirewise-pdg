@@ -109,24 +109,37 @@ typedef struct PdgRenderItem {
 
 typedef struct PdgContext PdgContext;
 
+/*! Return the ABI version compiled into the installed PDG package. */
 PDG_API int pdg_abi_version(void);
 
+/*! Create a reusable decoder context; release with pdg_context_free(). */
 PDG_API PdgContext *pdg_context_create(void);
+/*! Release a context returned by pdg_context_create(); NULL is accepted. */
 PDG_API void pdg_context_free(PdgContext *ctx);
 
+/*! Decode one PDG page into its encoded payload (RAW/BMP/JPEG/PNG/...). */
 PDG_API int pdg_decode_memory(const void *data, size_t size, PdgBuffer *out);
+/*! Decrypt an encrypted PDG page without decoding it. */
 PDG_API int pdg_decrypt_memory(const void *data, size_t size, PdgBuffer *out);
+/*! Like pdg_decode_memory(), reusing a context across pages. */
 PDG_API int pdg_decode_memory_ctx(PdgContext *ctx, const void *data, size_t size, PdgBuffer *out);
+/*! Like pdg_decrypt_memory(), reusing a context across pages. */
 PDG_API int pdg_decrypt_memory_ctx(PdgContext *ctx, const void *data, size_t size, PdgBuffer *out);
+/*! Decode count items in parallel with up to jobs workers; status is per item. */
 PDG_API int pdg_decode_memory_batch(PdgBatchItem *items, size_t count, size_t jobs);
+/*! Decrypt count items in parallel with up to jobs workers; status is per item. */
 PDG_API int pdg_decrypt_memory_batch(PdgBatchItem *items, size_t count, size_t jobs);
 /* PDF/JP2 payloads cannot be rasterised inside this package: pdg_render_memory()
  * returns PDG_ERR_EXTERNAL_DECODER_REQUIRED. The application composition layer
  * renders PDF page payloads with the internal quirewise-document engine. */
 PDG_API int pdg_render_memory(const void *data, size_t size, PdgImage *out);
+/*! Like pdg_render_memory(), reusing a context across pages. */
 PDG_API int pdg_render_memory_ctx(PdgContext *ctx, const void *data, size_t size, PdgImage *out);
+/*! Render count items in parallel; PDF/JP2 items report the external-decoder status. */
 PDG_API int pdg_render_memory_batch(PdgRenderItem *items, size_t count, size_t jobs);
+/*! Decode a PDG file path (UTF-8) into its encoded payload. */
 PDG_API int pdg_decode_file(const char *path, PdgBuffer *out);
+/*! Decrypt a PDG file path (UTF-8) without decoding it. */
 PDG_API int pdg_decrypt_file(const char *path, PdgBuffer *out);
 
 /*!
@@ -144,12 +157,18 @@ PDG_API int pdg_decrypt_file(const char *path, PdgBuffer *out);
  * Windows.
  */
 PDG_API int pdg_render_to_ccitt(const void *data, size_t size, PdgBuffer *out);
+/*! Release a buffer returned by decode/decrypt/render; NULL is accepted. */
 PDG_API void pdg_buffer_free(PdgBuffer *buffer);
+/*! Release pixels returned by pdg_render_memory(); NULL is accepted. */
 PDG_API void pdg_image_free(PdgImage *image);
 
+/*! Return a static human-readable name for an error code. */
 PDG_API const char *pdg_error_string(int code);
+/*! Return the file extension for an output kind (for example "bmp"). */
 PDG_API const char *pdg_output_extension(PdgOutputKind kind);
+/*! Return the display name for an output kind. */
 PDG_API const char *pdg_output_kind_name(PdgOutputKind kind);
+/*! Return 1 when the output kind needs a decoder outside this package. */
 PDG_API int pdg_output_requires_external_decoder(PdgOutputKind kind);
 
 #ifdef __cplusplus
