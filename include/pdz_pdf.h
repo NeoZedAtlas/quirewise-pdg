@@ -133,6 +133,7 @@ PDG_API int pdz_pdf_merge(const uint8_t *const *pdfs,
 /* Compatibility names retained for existing PDZ/PDG consumers. */
 typedef QwPageImageKind PdzPdfImageKind;
 typedef QwPageImage PdzPdfImage;
+/*! Build a PDF from already-encoded page images (JPEG, CCITT G4, JP2). */
 #define PDZ_PDF_IMG_JPEG QW_PAGE_IMAGE_JPEG
 #define PDZ_PDF_IMG_CCITT QW_PAGE_IMAGE_CCITT
 #define PDZ_PDF_IMG_GRAY8 QW_PAGE_IMAGE_GRAY8
@@ -230,7 +231,9 @@ PDG_API int pdz_pdf_resolve_rule(const void *data, size_t size,
                                  const PdzMember *members, size_t count,
                                  const char *key_string, int requested_rule);
 
+/*! Return a static name for a page rule. */
 PDG_API const char *pdz_pdf_page_rule_name(int rule);
+/*! Return a static name for a PDF route. */
 PDG_API const char *pdz_pdf_route_name(int route);
 
 #ifdef __cplusplus
